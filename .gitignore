@@ -1,0 +1,23 @@
+# macOS
+.DS_Store
+
+# Xcode / Swift(将来放代码后生效)
+build/
+DerivedData/
+*.xcuserstate
+*.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+.swiftpm/
+Package.resolved
+
+# 本地模型权重与运行期数据(勿入库)
+Models/
+*.mlmodelc
+*.mlpackage
+*.gguf
+*.safetensors
+
+# 索引/缓存(运行期落在 Application Support,若软链到仓库则忽略)
+*.sqlite
+*.sqlite-*
+.cache/

@@ -1,0 +1,137 @@
+# 模块③ — Activity Log(自动科研日志)
+
+- 状态:Design / 待评审
+- 依赖:模块①(日志经 `ActivityConnector` 汇入索引)
+- 对应建造期:P3(纯 Swift,最轻)
+
+macOS 后台捕获你当天动过的文件 + git 提交,每天自动生成一条结构化 markdown 写进 Obsidian,省去手动记 research log。Windows preview 当前做手动 activity scan,先展示 recent files 和 git commits。
+
+---
+
+## 1. 范围
+
+**包含**
+- macOS:FSEvents 监听用户授权的「工作文件夹」,记录被创建/修改的文件。
+- Windows preview:手动扫描来源文件夹,按 mtime 展示 recent files。
+- 轮询授权的 git 仓库,收集当天提交。
+- 按天聚合 → 生成 `Daily/YYYY-MM-DD.md`(受管段落,安全追加)。
+- 可选:用 MLX 本地 LLM 把流水账总结成人话。
+- 活动浏览 UI(日历 / 列表)。
+- `ActivityConnector` 把日志汇入模块①索引(可搜「我那阵子在干嘛」)。
+
+**不包含**
+- 浏览器历史 / 任意 app 使用时长追踪(隐私重 + 实现杂)——不做。
+- 屏幕录制 / 截图 OCR——不做。
+
+---
+
+## 2. 捕获信号(v1 克制)
+
+| 信号 | 来源 | 说明 |
+|---|---|---|
+| 文件改动 | FSEvents | 仅授权文件夹;记录路径、时间、事件类型 |
+| git 提交 | `git log --since=<today>` | 授权仓库;记录 hash、message、改动文件数 |
+
+Windows preview 中,文件改动信号来自手动 scan 而不是系统 watcher;git 提交仍通过本地 `git log` 获取。
+
+> 明确**不**监听全盘、不记录文件内容、不追踪 app。只看你主动授权的工作目录。
+
+---
+
+## 3. 聚合与去噪
+
+- **忽略规则**(可配置):`.git/`、`node_modules/`、`build/`、`outputs/`、`*.lock`、`.DS_Store`、临时/缓存目录、编辑器 swap 文件。
+- 去抖:同一文件当天多次改动折叠为「最后一次 + 次数」。
+- 按「项目(顶层授权目录)」分组,便于阅读。
+
+```swift
+struct DailyActivity {
+    let date: Date
+    let projects: [ProjectActivity]   // 按顶层目录分组
+}
+struct ProjectActivity {
+    let name: String
+    let filesTouched: [FileTouch]     // 路径 + 次数 + 末次时间
+    let commits: [GitCommit]          // hash + message + 文件数
+}
+```
+
+---
+
+## 4. 写回 Obsidian(安全追加)
+
+- 目标:`Daily/YYYY-MM-DD.md`(路径可配置,贴合你已有的 daily note 习惯)。
+- **受管段落**:Mneme 只写自己标记区内的内容,绝不动用户手写部分:
+  ```markdown
+  <!-- mneme:activity:start -->
+  ## 🛠 今日活动(自动)
+
+  ### FoodOrderSystem
+  - 提交 3 笔:`fix(training) …` / `docs(plan) …` / …
+  - 改动文件 7:`src/...`、`docs/blog/...`
+
+  ### Mneme
+  - 改动文件 5:`docs/00-product-design.md` …
+  <!-- mneme:activity:end -->
+  ```
+- 文件不存在则按模板新建;存在则只替换标记区,保留用户在区外写的内容。
+- 写入幂等:同一天多次刷新只更新标记区。
+
+---
+
+## 5. 可选 LLM 总结
+
+- 开关默认关。开后:把当天结构化活动喂给 MLX LLM(复用模块① P2 的模型),生成 2–3 句「今天主要在 X 上推进了 Y」。
+- 总结写在受管段落顶部,原始流水账保留在下方(可折叠)。
+
+---
+
+## 6. 索引接入
+
+- 每日 `Daily/*.md`(或活动结构本身)作为 `kind = .activity` 的 document 汇入模块①。
+- 于是可在全局搜索里问「上周在 Mneme 上改了哪些设计文档」之类。
+
+---
+
+## 7. UI
+
+- 活动页:月历视图(有活动的日期高亮)+ 选中日的详情(按项目分组的文件/提交列表)。
+- 操作:手动「刷新今天」、打开对应 Daily 笔记、调整监听文件夹与忽略规则。
+- Windows preview:Activity tab 显示每个来源的 recent files 和最近 git commits,用于验证与 macOS Activity 信息结构一致。
+
+---
+
+## 8. 隐私
+
+- 仅授权文件夹;只存元数据(路径/时间/commit message),**不存文件内容**。
+- 全本地;无任何上报。
+- 一键暂停捕获 / 清空历史。
+
+---
+
+## 9. 错误处理
+
+| 场景 | 处理 |
+|---|---|
+| 监听文件夹授权失效 | 标记并引导重授权;期间不丢已采集数据 |
+| git 不可用 / 非仓库 | 跳过该来源的 commit 采集,仅留文件改动 |
+| Daily 笔记被用户大改 | 只认标记区;标记区缺失则在文件末尾重新插入一对标记 |
+| FSEvents 事件风暴 | 队列 + 去抖 + 忽略规则,避免高频写盘 |
+
+---
+
+## 10. 验收标准
+
+- [ ] 授权一个项目目录后,当天在其中改文件 / 提交,「刷新今天」能生成正确的活动摘要。
+- [ ] 写入 Daily 笔记只动受管段落,手写内容原样保留。
+- [ ] 忽略规则生效(`node_modules` 等不出现在摘要里)。
+- [ ] 活动日志能在全局搜索里被检索到。
+- [ ]（开启时)LLM 总结贴合当天实际改动,不杜撰。
+- [ ] Windows preview Activity tab 能读取已添加来源,展示 recent files 和 git commits。
+
+---
+
+## 11. 风险
+
+- 「有用但非刚需」→ 价值取决于你真会回看;故默认把它做成**零维护后台 + 直接落进你已有的 daily note**,降低使用门槛。
+- 监听过宽会吵 → 默认窄授权 + 强忽略规则 + 去抖。

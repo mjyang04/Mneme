@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Mneme Windows Preview</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="rail" aria-label="Mneme sections">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">M</div>
+          <div>
+            <div class="brand-name">Mneme</div>
+            <div class="brand-meta">Windows Preview</div>
+          </div>
+        </div>
+        <nav class="tabs" aria-label="Primary">
+          <button class="tab active" data-view="search" title="Search">
+            <span class="tab-icon" aria-hidden="true">⌕</span>
+            <span>Search</span>
+          </button>
+          <button class="tab" data-view="sources" title="Sources">
+            <span class="tab-icon" aria-hidden="true">□</span>
+            <span>Sources</span>
+          </button>
+          <button class="tab" data-view="transcripts" title="Transcripts">
+            <span class="tab-icon" aria-hidden="true">≡</span>
+            <span>Transcripts</span>
+          </button>
+          <button class="tab" data-view="activity" title="Activity">
+            <span class="tab-icon" aria-hidden="true">↻</span>
+            <span>Activity</span>
+          </button>
+          <button class="tab" data-view="settings" title="Settings">
+            <span class="tab-icon" aria-hidden="true">⚙</span>
+            <span>Settings</span>
+          </button>
+        </nav>
+        <div class="rail-status">
+          <span id="indexState">Index not built</span>
+          <button id="rebuildIndex" class="icon-button" title="Rebuild index" aria-label="Rebuild index">↺</button>
+        </div>
+      </aside>
+
+      <main class="workspace">
+        <header class="topbar">
+          <div class="command-wrap">
+            <span class="command-icon" aria-hidden="true">⌕</span>
+            <input id="commandInput" class="command-input" type="search" placeholder="Search local research" autocomplete="off">
+            <button id="askButton" class="pill-button">Ask</button>
+          </div>
+          <div class="topbar-stats">
+            <span id="sourceCount">0 sources</span>
+            <span id="chunkCount">0 chunks</span>
+          </div>
+        </header>
+
+        <section id="view-search" class="view active">
+          <div class="section-heading">
+            <h1>Search / Ask</h1>
+            <div class="segmented" role="tablist" aria-label="Search mode">
+              <button class="segment active" data-mode="search">Search</button>
+              <button class="segment" data-mode="ask">Ask</button>
+            </div>
+          </div>
+          <div id="answerPanel" class="answer-panel hidden"></div>
+          <div id="results" class="result-list"></div>
+        </section>
+
+        <section id="view-sources" class="view">
+          <div class="section-heading">
+            <h1>Sources</h1>
+            <button id="addSource" class="primary-button">Add source</button>
+          </div>
+          <div class="form-row">
+            <select id="sourceKind" aria-label="Source kind">
+              <option value="notes">Notes</option>
+              <option value="papers">Papers</option>
+              <option value="code">Code</option>
+              <option value="transcripts">Transcripts</option>
+              <option value="activity">Activity</option>
+              <option value="folder">Folder</option>
+            </select>
+            <input id="sourcePath" type="text" placeholder="C:\Users\mj\Research" spellcheck="false">
+          </div>
+          <div id="sourceList" class="table-list"></div>
+        </section>
+
+        <section id="view-transcripts" class="view">
+          <div class="section-heading">
+            <h1>Transcripts</h1>
+            <button id="importTranscript" class="primary-button">Import text</button>
+          </div>
+          <div class="form-grid">
+            <input id="transcriptTitle" type="text" placeholder="Transcript title">
+            <textarea id="transcriptText" placeholder="Paste transcript text"></textarea>
+          </div>
+          <div id="transcriptList" class="table-list"></div>
+        </section>
+
+        <section id="view-activity" class="view">
+          <div class="section-heading">
+            <h1>Activity</h1>
+            <button id="refreshActivity" class="secondary-button">Refresh</button>
+          </div>
+          <div id="activityList" class="activity-list"></div>
+        </section>
+
+        <section id="view-settings" class="view">
+          <div class="section-heading">
+            <h1>Settings</h1>
+            <button id="saveSettings" class="primary-button">Save</button>
+          </div>
+          <div class="settings-grid">
+            <label>
+              <span>Quick search hotkey</span>
+              <input id="hotkeyInput" type="text" value="Ctrl+Space">
+            </label>
+            <label>
+              <span>Ask citations</span>
+              <input id="askTopK" type="number" min="3" max="12" value="5">
+            </label>
+            <label>
+              <span>Data directory</span>
+              <input id="dataDir" type="text" readonly>
+            </label>
+          </div>
+          <div class="capability-grid" id="capabilities"></div>
+        </section>
+      </main>
+    </div>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

@@ -12,6 +12,7 @@ APP_DIR="${1:-"$REPO_ROOT/.build/$APP_NAME.app"}"
 CONTENTS_DIR="$APP_DIR/Contents"
 MACOS_DIR="$CONTENTS_DIR/MacOS"
 RESOURCES_DIR="$CONTENTS_DIR/Resources"
+ICON_SOURCE="$REPO_ROOT/Assets/AppIcon/Mneme.icns"
 
 cd "$REPO_ROOT"
 swift build -c "$CONFIGURATION" --product "$APP_NAME"
@@ -22,6 +23,10 @@ cp "$BIN_PATH/$APP_NAME" "$MACOS_DIR/$APP_NAME"
 chmod 755 "$MACOS_DIR/$APP_NAME"
 
 find "$BIN_PATH" -maxdepth 1 -name "*.bundle" -type d -exec cp -R {} "$RESOURCES_DIR" \;
+
+if [ -f "$ICON_SOURCE" ]; then
+    cp "$ICON_SOURCE" "$RESOURCES_DIR/Mneme.icns"
+fi
 
 if [ -d "$REPO_ROOT/.build/checkouts/mlx-swift/Source/Cmlx/mlx-generated/metal" ]; then
     "$SCRIPT_DIR/build_mlx_metallib.sh" "$MACOS_DIR/mlx.metallib" >/dev/null
@@ -48,6 +53,8 @@ cat > "$CONTENTS_DIR/Info.plist" <<PLIST
     <string>6.0</string>
     <key>CFBundleName</key>
     <string>$APP_NAME</string>
+    <key>CFBundleIconFile</key>
+    <string>Mneme</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>

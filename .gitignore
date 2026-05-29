@@ -3,12 +3,12 @@
 
 # Xcode / Swift(将来放代码后生效)
 build/
+.build/
 DerivedData/
 *.xcuserstate
 *.xcodeproj/project.xcworkspace/xcuserdata/
 *.xcodeproj/xcuserdata/
 .swiftpm/
-Package.resolved
 
 # 本地模型权重与运行期数据(勿入库)
 Models/
@@ -21,3 +21,9 @@ Models/
 *.sqlite
 *.sqlite-*
 .cache/
+
+# 本地代理/工作记录(保留在本机,不上传 GitHub)
+/AGENTS.md
+/CLAUDE.md
+/task_plan.md
+/notes.md

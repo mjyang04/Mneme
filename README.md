@@ -24,7 +24,7 @@
 
 ## 技术栈(全部本地)
 
-Swift / SwiftUI · CoreML(embedding,走 ANE)· MLX-swift(可选本地 LLM)· WhisperKit(转写)· GRDB + sqlite-vec(向量库)· PDFKit + Vision(PDF/OCR)· FSEvents(文件监听)。
+Swift / SwiftUI · CoreML(embedding,走 ANE)· MLX-swift(本地 LLM)· WhisperKit(转写)· GRDB(SQLite + BLOB 向量检索;sqlite-vec 可后续替换)· PDFKit + Vision(PDF/OCR)· FSEvents(文件监听)。
 
 ## 文档
 
@@ -37,8 +37,75 @@ Swift / SwiftUI · CoreML(embedding,走 ANE)· MLX-swift(可选本地 LLM)· Whi
 
 ## 当前状态
 
-**设计阶段**。本仓库目前只含开发文档。代码尚未开始;实现计划将由 `superpowers:writing-plans` 在文档 review 通过后生成。
+**v0.1.0 本地可运行实现阶段**。仓库现在包含 SwiftPM package、`MnemeCore`、SwiftUI 菜单栏 app、测试套件和本地 `.app` 打包脚本。
+
+已实现:
+- 菜单栏 app、主窗口、快搜悬浮窗和可配置全局热键。
+- Notes / PDF / Code / Transcript / Activity 连接器。
+- GRDB-backed 本地索引、增量 indexing、语义搜索、MLX 本地 RAG streaming 生成和带引用的 extractive fallback。
+- Search/QuickSearch 结果可打开原文;笔记命中优先走 Obsidian URI,失败再回退系统打开。
+- CoreML multilingual-e5:已转换本地 `.mlpackage` 和 tokenizer 资产,打包进 `.build/Mneme.app`;资源缺失时回退到 NLEmbedding/Hashing。
+- Activity Log: 手动刷新、运行期 FSEvents 监听、git 活动收集、可选 MLX 每日摘要、Obsidian daily note 受管段落写回。
+- Transcripts: WhisperKit 音频转写、导入已有文本、语音备忘文件夹监听、JSON 持久化、索引、Obsidian 导出、时间戳段落播放。
+- Sources: 文件夹选择保存 security-scoped bookmark;可启动来源 FSEvents 监听,变化后去抖自动重建索引。
+- Settings: 可配置快搜热键和登录时启动。
+- 本地打包: `scripts/build_app_bundle.sh` 生成 `.build/Mneme.app`,复制 e5 资产、SwiftPM 资源 bundle 和 MLX `mlx.metallib`。
+
+当前主要限制:真实用户语料规模、长音频性能、混合语言录音质量、更多真实扫描 PDF OCR 样本和更大 MLX 模型选择仍需要继续验证。
+
+常用命令:
+
+```bash
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift build
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer scripts/build_app_bundle.sh
+```
+
+重新生成 e5 资产:
+
+```bash
+uv run --with transformers --with torch --with coremltools \
+  scripts/convert_e5_to_coreml.py --output-dir .build/Models/e5
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer scripts/build_app_bundle.sh
+```
+
+e5 bundle 诊断:
+
+```bash
+MNEME_DIAGNOSTIC=1 .build/Mneme.app/Contents/MacOS/Mneme
+```
+
+WhisperKit 转写诊断:
+
+```bash
+MNEME_TRANSCRIBE_DIAGNOSTIC_AUDIO=/path/to/audio.wav \
+  MNEME_TRANSCRIBE_DIAGNOSTIC_MODEL=tiny \
+  MNEME_TRANSCRIBE_DIAGNOSTIC_LANGUAGE=en \
+  .build/Mneme.app/Contents/MacOS/Mneme
+```
+
+MLX RAG 诊断:
+
+```bash
+MNEME_MLX_DIAGNOSTIC=1 .build/Mneme.app/Contents/MacOS/Mneme
+```
+
+Activity MLX 摘要诊断:
+
+```bash
+MNEME_ACTIVITY_SUMMARY_DIAGNOSTIC=1 .build/Mneme.app/Contents/MacOS/Mneme
+```
+
+MLX 命令行/app bundle 需要 `mlx.metallib`;`scripts/build_app_bundle.sh` 会自动调用 `scripts/build_mlx_metallib.sh`。如果本机缺 Metal Toolchain,先运行:
+
+```bash
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -downloadComponent MetalToolchain
+```
 
 ## 目标环境
 
 Apple Silicon(开发机 M5 Pro)· macOS 14+ · 内容中英混合。
+
+## License
+
+MIT. See [LICENSE](LICENSE).

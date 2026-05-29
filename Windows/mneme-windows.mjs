@@ -139,14 +139,19 @@ export function resolveDataDir(explicitDataDir) {
   }
 
   if (process.platform === "darwin") {
-    return path.join(os.homedir(), "Library", "Application Support", "Mneme", "WindowsPreview");
+    return path.join(os.homedir(), "Library", "Application Support", "Mneme", "WindowsDesktop");
   }
 
-  return path.join(os.homedir(), ".local", "share", "Mneme", "WindowsPreview");
+  return path.join(os.homedir(), ".local", "share", "Mneme", "WindowsDesktop");
 }
 
 export async function createWindowsPreviewApp(options = {}) {
+  return createWindowsDesktopBackend(options);
+}
+
+export async function createWindowsDesktopBackend(options = {}) {
   const dataDir = resolveDataDir(options.dataDir);
+  const platformName = options.platformName ?? "windows-desktop";
   await mkdir(dataDir, { recursive: true });
 
   const routes = {
@@ -189,7 +194,7 @@ export async function createWindowsPreviewApp(options = {}) {
       const index = await readJson(dataFile(dataDir, "index.json"), emptyIndex());
       const settings = await readJson(dataFile(dataDir, "settings.json"), defaultSettings());
       return {
-        platform: "windows-preview",
+        platform: platformName,
         dataDir,
         sources,
         transcripts,
@@ -423,7 +428,7 @@ async function rebuildIndex(dataDir) {
       filesIndexed += 1;
 
       if (filesSeen >= MAX_SCAN_FILES) {
-        warnings.push(`Stopped after ${MAX_SCAN_FILES} files to keep the preview responsive.`);
+        warnings.push(`Stopped after ${MAX_SCAN_FILES} files to keep the desktop app responsive.`);
         break;
       }
     }
@@ -467,7 +472,7 @@ async function loadDocument(root, source, filePath, fileInfo) {
     text = [
       `PDF document: ${baseTitle}.`,
       `Path: ${filePath}.`,
-      "The Windows preview indexes PDF metadata only; full PDF text extraction remains a native Windows adapter task."
+      "The Windows desktop build indexes PDF metadata only; full PDF text extraction remains a native Windows adapter task."
     ].join(" ");
   } else {
     text = await readFile(filePath, "utf8");
@@ -578,7 +583,7 @@ function answerFromIndex(index, query) {
   const hits = searchIndex(index, query, {}).slice(0, 5);
   if (!hits.length) {
     return {
-      answer: "No local evidence matched this question in the Windows preview index.",
+      answer: "No local evidence matched this question in the Windows desktop index.",
       citations: []
     };
   }
@@ -975,11 +980,11 @@ function parseArgs(argv) {
 
 async function main() {
   const options = parseArgs(process.argv.slice(2));
-  const app = await createWindowsPreviewApp(options);
+  const app = await createWindowsDesktopBackend(options);
   const address = await app.listen(options.port ?? DEFAULT_PORT, options.host ?? "127.0.0.1");
   const host = typeof address === "object" && address ? address.address : options.host ?? "127.0.0.1";
   const port = typeof address === "object" && address ? address.port : options.port ?? DEFAULT_PORT;
-  console.log(`Mneme Windows preview running at http://${host}:${port}`);
+  console.log(`Mneme Windows desktop backend running at http://${host}:${port}`);
   console.log(`Data directory: ${app.dataDir}`);
 
   const shutdown = async () => {

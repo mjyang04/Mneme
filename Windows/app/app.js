@@ -1,7 +1,8 @@
 const state = {
   mode: "search",
   status: null,
-  activity: null
+  activity: null,
+  desktop: window.mnemeDesktop ?? null
 };
 
 const elements = {
@@ -14,6 +15,7 @@ const elements = {
   answerPanel: document.querySelector("#answerPanel"),
   sourceKind: document.querySelector("#sourceKind"),
   sourcePath: document.querySelector("#sourcePath"),
+  browseSource: document.querySelector("#browseSource"),
   addSource: document.querySelector("#addSource"),
   sourceList: document.querySelector("#sourceList"),
   rebuildIndex: document.querySelector("#rebuildIndex"),
@@ -108,7 +110,10 @@ function renderSources(sources) {
         <div class="row-title">${escapeHtml(source.path)}</div>
         <div class="row-meta">${escapeHtml(source.kind)} · added ${formatDate(source.addedAt)}</div>
       </div>
-      <button class="danger-button" data-delete-source="${escapeHtml(source.id)}">Remove</button>
+      <div class="row-actions">
+        <button class="link-button" data-open-path="${escapeHtml(source.path)}">Open</button>
+        <button class="danger-button" data-delete-source="${escapeHtml(source.id)}">Remove</button>
+      </div>
     </div>
   `).join("");
 }
@@ -148,6 +153,7 @@ function renderResults(hits) {
         </div>
       </div>
       <p class="snippet">${escapeHtml(hit.snippet)}</p>
+      ${hit.path ? `<div class="row-actions"><button class="link-button" data-open-path="${escapeHtml(hit.path)}">Open source</button><button class="link-button" data-show-path="${escapeHtml(hit.path)}">Show in folder</button></div>` : ""}
     </article>
   `).join("");
 }
@@ -226,6 +232,17 @@ async function addSource() {
   showToast("Source added.");
 }
 
+async function browseSource() {
+  if (!state.desktop?.selectSourceFolder) {
+    showToast("Folder picker is available in the Windows desktop app.");
+    return;
+  }
+  const selectedPath = await state.desktop.selectSourceFolder();
+  if (selectedPath) {
+    elements.sourcePath.value = selectedPath;
+  }
+}
+
 async function rebuildIndex() {
   elements.indexState.textContent = "Indexing...";
   const stats = await api("/api/index/rebuild", { method: "POST", body: "{}" });
@@ -267,6 +284,28 @@ async function saveSettings() {
   showToast("Settings saved.");
 }
 
+async function openNativePath(targetPath) {
+  if (!state.desktop?.openPath) {
+    showToast("Opening files is available in the Windows desktop app.");
+    return;
+  }
+  const result = await state.desktop.openPath(targetPath);
+  if (!result?.ok) {
+    showToast(result?.error || "Could not open path.");
+  }
+}
+
+async function showNativePath(targetPath) {
+  if (!state.desktop?.showItemInFolder) {
+    showToast("Showing files is available in the Windows desktop app.");
+    return;
+  }
+  const result = await state.desktop.showItemInFolder(targetPath);
+  if (!result?.ok) {
+    showToast(result?.error || "Could not show path.");
+  }
+}
+
 elements.tabs.forEach((tab) => {
   tab.addEventListener("click", () => activateView(tab.dataset.view));
 });
@@ -301,12 +340,30 @@ elements.addSource.addEventListener("click", () => {
   addSource().catch((error) => showToast(error.message));
 });
 
+elements.browseSource.addEventListener("click", () => {
+  browseSource().catch((error) => showToast(error.message));
+});
+
 elements.sourceList.addEventListener("click", async (event) => {
   const button = event.target.closest("[data-delete-source]");
-  if (!button) return;
-  await api(`/api/sources/${encodeURIComponent(button.dataset.deleteSource)}`, { method: "DELETE" });
-  await refreshStatus();
-  showToast("Source removed.");
+  const openButton = event.target.closest("[data-open-path]");
+  if (button) {
+    await api(`/api/sources/${encodeURIComponent(button.dataset.deleteSource)}`, { method: "DELETE" });
+    await refreshStatus();
+    showToast("Source removed.");
+  } else if (openButton) {
+    await openNativePath(openButton.dataset.openPath);
+  }
+});
+
+elements.results.addEventListener("click", async (event) => {
+  const openButton = event.target.closest("[data-open-path]");
+  const showButton = event.target.closest("[data-show-path]");
+  if (openButton) {
+    await openNativePath(openButton.dataset.openPath);
+  } else if (showButton) {
+    await showNativePath(showButton.dataset.showPath);
+  }
 });
 
 elements.rebuildIndex.addEventListener("click", () => {
@@ -324,6 +381,12 @@ elements.refreshActivity.addEventListener("click", () => {
 elements.saveSettings.addEventListener("click", () => {
   saveSettings().catch((error) => showToast(error.message));
 });
+
+if (state.desktop?.onTriggerRebuild) {
+  state.desktop.onTriggerRebuild(() => {
+    rebuildIndex().catch((error) => showToast(error.message));
+  });
+}
 
 function emptyRow(message) {
   return `<div class="table-row"><div class="muted">${escapeHtml(message)}</div></div>`;

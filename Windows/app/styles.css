@@ -368,7 +368,7 @@ h1 {
 
 .form-row {
   display: grid;
-  grid-template-columns: 160px minmax(0, 1fr);
+  grid-template-columns: 160px minmax(0, 1fr) auto;
   gap: 10px;
   margin-bottom: 18px;
   padding: 14px;
@@ -428,6 +428,21 @@ textarea:focus {
   background: #f3dedb;
   color: var(--red);
   border: 1px solid #ddb6b1;
+}
+
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.link-button {
+  min-height: 30px;
+  padding: 0 10px;
+  background: #e3edf3;
+  color: var(--blue);
+  border: 1px solid #bfd2df;
 }
 
 .activity-project {

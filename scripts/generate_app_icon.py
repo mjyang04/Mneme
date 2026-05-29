@@ -15,6 +15,7 @@ ICON_DIR = ROOT / "Assets" / "AppIcon"
 PNG_PATH = ICON_DIR / "Mneme.png"
 ICONSET_DIR = ICON_DIR / "Mneme.iconset"
 ICNS_PATH = ICON_DIR / "Mneme.icns"
+ICO_PATH = ICON_DIR / "Mneme.ico"
 
 
 def lerp(a: int, b: int, t: float) -> int:
@@ -167,6 +168,11 @@ def write_icns_from_pngs() -> None:
     ICNS_PATH.write_bytes(struct.pack(">4sI", b"icns", len(payload) + 8) + payload)
 
 
+def write_ico(icon: Image.Image) -> None:
+    sizes = [(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)]
+    icon.save(ICO_PATH, format="ICO", sizes=sizes)
+
+
 def main() -> None:
     ICON_DIR.mkdir(parents=True, exist_ok=True)
     icon = make_icon()
@@ -181,8 +187,10 @@ def main() -> None:
         )
     except subprocess.CalledProcessError:
         write_icns_from_pngs()
+    write_ico(icon)
     print(PNG_PATH)
     print(ICNS_PATH)
+    print(ICO_PATH)
 
 
 if __name__ == "__main__":

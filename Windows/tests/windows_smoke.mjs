@@ -4,14 +4,14 @@ import { cp, mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { createWindowsPreviewApp } from "../mneme-windows.mjs";
+import { createWindowsDesktopBackend } from "../mneme-windows.mjs";
 
 const TEST_DIR = path.dirname(fileURLToPath(import.meta.url));
 const WINDOWS_DIR = path.dirname(TEST_DIR);
 const FIXTURES_DIR = path.join(WINDOWS_DIR, "fixtures");
 
-test("Windows preview indexes local sources, searches, answers, and imports transcripts", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "mneme-windows-preview-"));
+test("Windows desktop backend indexes local sources, searches, answers, and imports transcripts", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "mneme-windows-desktop-"));
   const dataDir = path.join(root, "data");
   const sourceDir = path.join(root, "source");
   await mkdir(sourceDir, { recursive: true });
@@ -22,7 +22,7 @@ test("Windows preview indexes local sources, searches, answers, and imports tran
     "utf8"
   );
 
-  const app = await createWindowsPreviewApp({ dataDir, port: 0, logErrors: false });
+  const app = await createWindowsDesktopBackend({ dataDir, port: 0, logErrors: false });
   const address = await app.listen(0);
   const base = `http://127.0.0.1:${address.port}`;
 
@@ -68,7 +68,8 @@ test("Windows preview indexes local sources, searches, answers, and imports tran
     assert.match(await getText(`${base}/app.js`), /performSearch/);
 
     const localHtml = await readFile(path.join(WINDOWS_DIR, "app", "index.html"), "utf8");
-    assert.match(localHtml, /Windows Preview/);
+    assert.match(localHtml, /Windows Desktop/);
+    assert.match(localHtml, /Browse/);
   } finally {
     await app.close();
     await rm(root, { recursive: true, force: true });

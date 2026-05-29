@@ -4,7 +4,7 @@ Mneme v0.1.0 is distributed as a free, ad-hoc signed macOS app. It is not notari
 
 This means macOS may show a security warning the first time you open the app. This is expected for this release. You only need to approve the app once on your Mac.
 
-Windows is handled separately in this repository. The Windows build is currently a development preview, not a DMG/installer release. See [Windows/README.md](Windows/README.md) and run `node .\Windows\mneme-windows.mjs` on Windows with Node.js 22 or newer.
+Windows is handled separately in this repository. The Windows Desktop build uses Electron and produces installer artifacts from the `Windows Desktop` CI workflow. See [Windows/README.md](Windows/README.md) for development, test, and packaging commands.
 
 ## Install
 
@@ -54,7 +54,7 @@ Mneme v0.1.0 是免费发布的 macOS 应用，使用 ad-hoc signing。它没有
 
 因此，macOS 首次打开时可能会显示安全提示。这是当前版本的预期现象。你只需要在自己的 Mac 上批准一次。
 
-Windows 平台在本仓库中单独处理。当前 Windows 是 development preview，不是 DMG 或 installer 版本。请参考 [Windows/README.md](Windows/README.md)，并在安装 Node.js 22 或更新版本后运行 `node .\Windows\mneme-windows.mjs`。
+Windows 平台在本仓库中单独处理。Windows Desktop build 使用 Electron，并由 `Windows Desktop` CI workflow 产出 installer artifact。开发、测试和打包命令见 [Windows/README.md](Windows/README.md)。
 
 ## 安装
 

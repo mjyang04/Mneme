@@ -1,0 +1,59 @@
+{
+  "name": "mneme",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Local-first research memory app for macOS and Windows.",
+  "main": "Windows/desktop/main.cjs",
+  "scripts": {
+    "windows:dev": "electron .",
+    "windows:test": "node --test Windows/tests/windows_smoke.mjs",
+    "windows:check": "node --check Windows/mneme-windows.mjs && node --check Windows/app/app.js && node --check Windows/desktop/main.cjs && node --check Windows/desktop/preload.cjs",
+    "windows:dist": "electron-builder --win nsis portable --publish=never"
+  },
+  "devDependencies": {
+    "electron": "42.3.0",
+    "electron-builder": "26.8.1"
+  },
+  "build": {
+    "appId": "local.mneme.windows",
+    "productName": "Mneme",
+    "copyright": "Copyright © 2026 Mneme contributors",
+    "asar": false,
+    "directories": {
+      "output": "dist/windows"
+    },
+    "files": [
+      "Windows/**/*",
+      "Assets/AppIcon/Mneme.png",
+      "Assets/AppIcon/Mneme.ico",
+      "package.json",
+      "!Windows/tests/**",
+      "!Windows/fixtures/**"
+    ],
+    "win": {
+      "icon": "Assets/AppIcon/Mneme.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Mneme"
+    }
+  }
+}

@@ -1,0 +1,52 @@
+name: Windows Desktop
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  smoke:
+    name: Windows desktop smoke
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Run Windows desktop checks
+        run: |
+          npm run windows:check
+          npm run windows:test
+
+  package:
+    name: Windows installer
+    runs-on: windows-latest
+    needs: smoke
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Windows desktop artifacts
+        run: npm run windows:dist
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: mneme-windows-desktop
+          path: |
+            dist/windows/*.exe
+            dist/windows/*.blockmap

@@ -3,7 +3,7 @@
 - 状态:Design / 待评审
 - 日期:2026-05-29
 - 作者:Mingjia Yang(与 Claude Scholar 协作)
-- 适用环境:macOS 14+ Apple Silicon 为正式打包目标;Windows 10/11 为 development preview 目标(Node.js 22+)
+- 适用环境:macOS 14+ Apple Silicon 为正式打包目标;Windows 10/11 为 Desktop build 目标(Node.js 22+ / Electron)
 
 ---
 
@@ -17,7 +17,7 @@
 
 ### 非目标(本版明确不做)
 - 不做云同步、不做多人协作、不做账号体系。
-- 不把 Windows preview 宣称为正式发布版;本轮只验证 Windows 工作台信息结构、来源扫描、搜索/Ask、转写文本导入和 activity scan。
+- 不把 Windows Desktop 宣称为已具备 macOS 的全部模型能力;本轮落地桌面壳、installer path、来源扫描、搜索/Ask、转写文本导入和 activity scan。
 - 不做通用文件管理器/笔记编辑器(不抢 Obsidian 的活,只做检索与捕获)。
 - 不做 App Store 上架打磨(自用,开发签名即可)。
 
@@ -30,7 +30,7 @@
 ```
 ┌─────────────────────────── UI 层 ─────────────────────────────────────┐
 │  macOS: SwiftUI MenuBarExtra │ 全局热键 → QuickSearch(NSPanel)          │
-│  Windows preview: 本地 Node.js server + browser workbench               │
+│  Windows Desktop: Electron window/tray + 本地 Node.js backend            │
 │  共享信息结构:Search/Ask │ Sources │ Transcripts │ Activity │ Settings   │
 └───────────────────────────────────┬────────────────────────────────────┘
                                      │ (调用,@MainActor 之外)
@@ -54,9 +54,9 @@
 
 ### 平台边界
 - macOS 是 v0.1.0 正式打包平台:`.app` + DMG,使用 SwiftUI/AppKit/CoreML/MLX/WhisperKit/FSEvents/SMAppService。
-- Windows 当前是 development preview:`Windows/mneme-windows.mjs` 启动本地服务,浏览器打开工作台;运行期数据默认落在 `%APPDATA%\Mneme`。
-- Windows preview 已覆盖来源注册、本地文本/代码/笔记索引、PDF metadata indexing、lexical search、extractive Ask 引用回答、transcript text import、activity scan。
-- Windows 尚未覆盖 native tray packaging、系统级全局热键、CoreML e5、MLX 生成、WhisperKit 音频转写和完整 PDF 文本抽取。
+- Windows 当前是 Desktop build:Electron 启动原生窗口/托盘/`Ctrl+Space` 全局快捷键,内嵌本地 Node.js backend;运行期数据默认落在 `%APPDATA%\Mneme`。
+- Windows Desktop 已覆盖来源注册、本地文本/代码/笔记索引、PDF metadata indexing、lexical search、extractive Ask 引用回答、transcript text import、activity scan、原生 folder picker 和 installer artifact path。
+- Windows 尚未覆盖 CoreML e5、MLX 生成、WhisperKit 音频转写和完整 PDF 文本抽取。
 
 ### 分层原则
 - UI 层不直接碰存储与模型,只经由 service 对象(便于测试、便于换实现)。
@@ -129,7 +129,7 @@ CREATE VIRTUAL TABLE chunk_vec USING vec0(
 
 | 关注点 | 选型 | 备注 |
 |---|---|---|
-| 壳 | macOS: SwiftUI + `MenuBarExtra`; Windows preview: Node.js 本地 workbench | macOS 悬浮窗用 `NSPanel`;Windows 后续替换为原生 tray/window shell |
+| 壳 | macOS: SwiftUI + `MenuBarExtra`; Windows Desktop: Electron window/tray + Node backend | macOS 悬浮窗用 `NSPanel`;Windows 用 Electron shell |
 | 全局热键 | `KeyboardShortcuts`(sindresorhus) | 用户可在设置里改键 |
 | 开机自启 | `SMAppService`(macOS 13+) | 登录项 |
 | Embedding | **CoreML** 跑 `multilingual-e5-small`(384d) | 走 ANE,常驻省电;中英混合 |
@@ -137,7 +137,7 @@ CREATE VIRTUAL TABLE chunk_vec USING vec0(
 | 本地 LLM(②阶段) | **MLX-swift** 跑 `Qwen2.5-3B-Instruct` 或 `Llama-3.2-3B`(4-bit) | M5 Pro 可跑 7B,默认 3B 求快 |
 | 语音转写(模块②) | **WhisperKit**(argmaxinc) | 纯 Swift + CoreML,多语 |
 | PDF | PDFKit 抽文本 + Vision `VNRecognizeTextRequest` | 扫描版走 OCR 兜底 |
-| 文件监听(模块③) | macOS: FSEvents; Windows preview: manual activity scan | 后续 Windows 原生 watcher 再补 |
+| 文件监听(模块③) | macOS: FSEvents; Windows Desktop: manual activity scan | 后续 Windows 原生 watcher 再补 |
 | git 解析(模块③) | shell 调 `git log --since` 或 SwiftGit2 | v1 优先 shell,零依赖 |
 | 写回 Obsidian | 直接写 `.md` + YAML frontmatter | 受管段落用标记,避免覆盖用户编辑 |
 
@@ -163,7 +163,7 @@ CREATE VIRTUAL TABLE chunk_vec USING vec0(
 - **零运行时联网**:除「首次准备模型权重」外,任何路径都不发网络请求。可在设置里显示「网络:已禁用」状态以自证。
 - **文件夹授权**:用户在「来源」里选文件夹,用 security-scoped bookmark 持久化;启动时 `startAccessingSecurityScopedResource()`。
 - **沙箱取舍(自用)**:默认**不开 App Sandbox** 的开发签名构建,任意文件夹直读最省事。若日后要分发,再切到沙箱 + bookmarks 完整路径。
-- 索引库、模型、缓存全部落在本机。macOS 使用 `~/Library/Application Support/Mneme/`;Windows preview 默认使用 `%APPDATA%\Mneme`;都应可一键清空。
+- 索引库、模型、缓存全部落在本机。macOS 使用 `~/Library/Application Support/Mneme/`;Windows Desktop 默认使用 `%APPDATA%\Mneme`;都应可一键清空。
 
 ---
 
@@ -205,8 +205,8 @@ CREATE VIRTUAL TABLE chunk_vec USING vec0(
 | **P1** | **模块①核心**:Notes/PDF/Code 连接器 → Chunker → CoreML embedding → IndexStore → 热键悬浮窗**语义搜索** | **第一个可用版本** |
 | **P2** | **模块①-RAG**:接入 MLX 本地 LLM,检索片段 → 带引用问答 | 能「问」而不只是「搜」 |
 | **P3** | **模块③**:FSEvents+git → 每日 Obsidian 日志 + 活动浏览;ActivityConnector 汇入索引 | 自动 research log |
-| **P4** | **模块②**:macOS WhisperKit 转写 → TranscriptConnector 汇入索引 + 转写管理 + 导出;Windows preview 先做 transcript text import | 语音/转写文本也可检索 |
-| **P5** | **Windows native**:把 preview workbench 迁移到原生 tray/window shell,补 watcher、hotkey、PDF text extraction、可替代 embedding/LLM/transcription runtime | Windows 可分发版本 |
+| **P4** | **模块②**:macOS WhisperKit 转写 → TranscriptConnector 汇入索引 + 转写管理 + 导出;Windows Desktop 先做 transcript text import | 语音/转写文本也可检索 |
+| **P5** | **Windows runtime hardening**:补 watcher、PDF text extraction、可替代 embedding/LLM/transcription runtime | Windows 功能补齐 |
 
 > 顺序逻辑:①是地基(②③的内容都要经它检索);③比②轻(纯 Swift)故先于②;P2(RAG)可视精力在 P3/P4 之间灵活插入。
 
@@ -215,7 +215,7 @@ CREATE VIRTUAL TABLE chunk_vec USING vec0(
 ## 11. 关键假设(待确认)
 
 1. 开发机 **M5 Pro**,内存足以同时跑 embedding 常驻 + 按需 3–7B LLM。
-2. 最低正式发布目标 **macOS 14**(用最新 SwiftUI / MenuBarExtra / SMAppService);Windows preview 目标 Windows 10/11 + Node.js 22+。
+2. 最低正式发布目标 **macOS 14**(用最新 SwiftUI / MenuBarExtra / SMAppService);Windows Desktop 目标 Windows 10/11 + Node.js 22+。
 3. 内容**中英混合** → 多语 embedding + Whisper 多语。
 4. 数据来源全部**可配置文件夹**,不硬编码任何路径。
 5. 自用场景,**先不上 App Sandbox**;模型权重首次本地准备一次可接受。

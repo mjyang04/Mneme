@@ -9,6 +9,8 @@ DerivedData/
 *.xcodeproj/project.xcworkspace/xcuserdata/
 *.xcodeproj/xcuserdata/
 .swiftpm/
+node_modules/
+dist/
 
 # 本地模型权重与运行期数据(勿入库)
 Models/

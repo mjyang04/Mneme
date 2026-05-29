@@ -11,10 +11,10 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: "22"
 
@@ -29,10 +29,10 @@ jobs:
     needs: smoke
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: "22"
           cache: npm
@@ -42,6 +42,30 @@ jobs:
 
       - name: Build Windows desktop artifacts
         run: npm run windows:dist
+
+      - name: Smoke packaged Windows app
+        shell: pwsh
+        run: |
+          $exe = Join-Path $PWD "dist/windows/win-unpacked/Mneme.exe"
+          if (-not (Test-Path $exe)) {
+            throw "Packaged executable not found: $exe"
+          }
+
+          $process = $null
+          try {
+            $env:MNEME_ELECTRON_SMOKE = "1"
+            $process = Start-Process -FilePath $exe -WorkingDirectory (Split-Path $exe) -PassThru
+            Wait-Process -InputObject $process -Timeout 30 -ErrorAction Stop
+            $process.Refresh()
+            if ($process.ExitCode -ne 0) {
+              throw "Packaged executable smoke failed with exit code $($process.ExitCode)."
+            }
+          } finally {
+            Remove-Item Env:MNEME_ELECTRON_SMOKE -ErrorAction SilentlyContinue
+            if ($process -and -not $process.HasExited) {
+              Stop-Process -InputObject $process -Force
+            }
+          }
 
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4

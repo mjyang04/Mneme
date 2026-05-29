@@ -9,6 +9,7 @@ const {
   nativeImage,
   shell
 } = require("electron");
+const http = require("node:http");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 
@@ -43,6 +44,54 @@ async function startBackend() {
   });
   const address = await backend.listen(0, "127.0.0.1");
   return `http://127.0.0.1:${address.port}`;
+}
+
+function getJson(url) {
+  return new Promise((resolve, reject) => {
+    const request = http.get(url, { timeout: 5_000 }, (response) => {
+      let body = "";
+      response.setEncoding("utf8");
+      response.on("data", (chunk) => {
+        body += chunk;
+      });
+      response.on("end", () => {
+        if ((response.statusCode ?? 500) < 200 || (response.statusCode ?? 500) >= 300) {
+          reject(new Error(`GET ${url} failed with ${response.statusCode}: ${body}`));
+          return;
+        }
+        try {
+          resolve(JSON.parse(body));
+        } catch (error) {
+          reject(error);
+        }
+      });
+    });
+    request.on("timeout", () => {
+      request.destroy(new Error(`GET ${url} timed out.`));
+    });
+    request.on("error", reject);
+  });
+}
+
+async function runPackagedSmoke(startURL) {
+  const status = await getJson(`${startURL}/api/status`);
+  if (status.platform !== "windows-desktop") {
+    throw new Error(`Unexpected Mneme platform: ${status.platform}`);
+  }
+  console.log(`mneme.smoke.platform=${status.platform}`);
+  console.log(`mneme.smoke.dataDir=${status.dataDir}`);
+}
+
+async function closeBackend() {
+  if (!backend) return;
+  const runningBackend = backend;
+  backend = null;
+  await runningBackend.close().catch(() => {});
+}
+
+async function exitAfterSmoke(code) {
+  await closeBackend();
+  app.exit(code);
 }
 
 function createWindow(startURL) {
@@ -158,6 +207,16 @@ function registerIpc() {
 app.whenReady().then(async () => {
   registerIpc();
   const startURL = await startBackend();
+  if (process.env.MNEME_ELECTRON_SMOKE === "1") {
+    try {
+      await runPackagedSmoke(startURL);
+      await exitAfterSmoke(0);
+    } catch (error) {
+      console.error(error);
+      await exitAfterSmoke(1);
+    }
+    return;
+  }
   createWindow(startURL);
   createTray();
   registerShortcuts();
@@ -180,7 +239,5 @@ app.on("window-all-closed", () => {
 });
 
 app.on("quit", async () => {
-  if (backend) {
-    await backend.close().catch(() => {});
-  }
+  await closeBackend();
 });

@@ -21,6 +21,9 @@ trap cleanup EXIT
 
 /usr/bin/ditto "$APP_DIR" "$STAGING_DIR/${APP_NAME}.app"
 ln -s /Applications "$STAGING_DIR/Applications"
+if [ -f "$REPO_ROOT/INSTALL.md" ]; then
+    cp "$REPO_ROOT/INSTALL.md" "$STAGING_DIR/INSTALL.md"
+fi
 
 rm -f "$OUTPUT_PATH"
 hdiutil create \

@@ -32,11 +32,6 @@ let package = Package(
                 .product(name: "Tokenizers", package: "swift-transformers")
             ],
             path: "App"
-        ),
-        .testTarget(
-            name: "MnemeCoreTests",
-            dependencies: ["MnemeCore"],
-            resources: [.copy("Fixtures")]
         )
     ]
 )

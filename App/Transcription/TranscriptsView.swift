@@ -18,7 +18,7 @@ struct TranscriptsView: View {
     @State private var audioURL: URL?
     @State private var audioTitle = ""
     @State private var audioModel = "large-v3-v20240930_626MB"
-    @State private var allowModelDownload = false
+    @State private var allowModelDownload = true
     @State private var isTranscribing = false
     @State private var player: AVPlayer?
 
@@ -80,7 +80,7 @@ struct TranscriptsView: View {
                         TextField("标题，留空则使用文件名", text: $audioTitle)
                         HStack {
                             TextField("WhisperKit 模型", text: $audioModel)
-                            Toggle("允许首次下载模型", isOn: $allowModelDownload)
+                            Toggle("自动准备转写模型", isOn: $allowModelDownload)
                                 .toggleStyle(.checkbox)
                         }
                         HStack {

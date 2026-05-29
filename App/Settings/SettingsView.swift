@@ -126,8 +126,8 @@ struct SettingsView: View {
                 }
             }
 
-            Section("当前限制") {
-                Text("快搜热键和登录项可在本页修改；来源文件夹支持运行期 FSEvents 监听并自动重建索引；WhisperKit 可转写音频并汇入索引；MLX 可流式生成带引用回答并保留 extractive fallback；活动日志支持手动刷新、运行期后台监听和可选 MLX 摘要；本地 .app 可由脚本生成。仍需继续验证真实用户语料、长音频性能、混合语言录音质量、扫描 PDF OCR 样本和更大 MLX 模型。")
+            Section("模型与本地数据") {
+                Text("Mneme 会把索引、转写稿和模型缓存保存在本机。首次使用转写或本地问答时，如果所需模型尚未准备好，Mneme 会尝试下载到本机模型目录；下载完成后，日常索引、搜索和已缓存模型推理都在本机运行。")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

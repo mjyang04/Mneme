@@ -1,111 +1,145 @@
-# Mneme — 本地科研第二大脑 (working name)
+# Mneme
 
-一个**完全离线**、常驻菜单栏的 macOS app:把你的笔记、论文 PDF、代码、语音转写、活动日志统一索引在本机,随时按全局热键唤起「问我的文件」。**数据永不出本机。**
+Mneme is a local-first research memory app for macOS. It helps researchers search, ask questions about, transcribe, and review their own research materials on their Mac.
 
-> Working name「Mneme」(记忆女神)仅占位,可随时改;改名只需重命名本文件夹 + 更新文档标题。
+Mneme does not require programming experience. Install the app, choose the folders you want Mneme to read, build the local index, and use the quick-search window or main app tabs.
 
-## 为什么做它
+## Download
 
-研究者每天都犯「我知道我见过、但翻不到」的毛病:笔记在 Obsidian、论文在 PDF 文件夹、代码在各仓库、灵感在语音备忘里。Mneme 用**本地语义检索**把这些统一起来,完全在 Apple Silicon 上跑,隐私零外泄。
+Download the latest installer from the [Releases](https://github.com/mjyang04/Mneme/releases) page.
 
-## 产品形态
+Use the DMG installer:
 
-- 常驻**菜单栏**(MenuBarExtra)
-- **全局热键**唤起 Spotlight 式快搜悬浮窗(NSPanel)
-- **主窗口**:搜索 / 转写 / 活动日志 / 来源与设置
+1. Open `Mneme-v0.1.0-macos-arm64.dmg`.
+2. Drag `Mneme.app` into `Applications`.
+3. Open `Mneme.app` from `Applications`.
 
-## 三个模块(统一产品,共享索引)
+If macOS blocks the first launch, open Finder, right-click `Mneme.app`, choose **Open**, then confirm the system prompt.
 
-| 模块 | 角色 | 内容 |
-|---|---|---|
-| ① Index & Query | 地基 / 查询层 | 笔记+PDF+代码 → 语义搜索;phase2 本地 LLM RAG 问答 |
-| ② Transcription | 内容来源 | WhisperKit 本地语音转写 → 汇入索引 + 导出 Obsidian |
-| ③ Activity Log | 内容来源 | FSEvents+git 捕获每日活动 → 写进 Obsidian 日记 |
+## Requirements
 
-## 技术栈(全部本地)
+- Apple Silicon Mac, M1 or newer.
+- macOS 14 or newer.
+- Enough local disk space for app data and local models. Optional transcription and local answer models may use several hundred MB or more.
+- Internet access is recommended on first use so Mneme can prepare optional local models. After model preparation, normal indexing and search stay local.
 
-Swift / SwiftUI · CoreML(embedding,走 ANE)· MLX-swift(本地 LLM)· WhisperKit(转写)· GRDB(SQLite + BLOB 向量检索;sqlite-vec 可后续替换)· PDFKit + Vision(PDF/OCR)· FSEvents(文件监听)。
+## First Use
 
-## 文档
+1. Open Mneme from `Applications`.
+2. Add folders in Settings:
+   - Notes folders for Markdown notes.
+   - Paper folders for PDF files.
+   - Code folders for source repositories.
+3. Click **Rebuild Index**.
+4. Use the menu-bar item or global quick-search shortcut to search.
+5. In the Transcripts tab, choose an audio file and start transcription. If the WhisperKit model is not installed yet, Mneme can download it automatically.
+6. In the Activity tab, choose workspace folders and a daily-note folder if you want Mneme to write daily activity summaries.
 
-| 文件 | 内容 |
-|---|---|
-| [docs/00-product-design.md](docs/00-product-design.md) | 产品总体设计:架构、选型、数据模型、隐私、测试、建造分期 |
-| [docs/01-module-index-query.md](docs/01-module-index-query.md) | 模块① spec:连接器 / 分块 / embedding / 索引 / 语义搜索 / RAG |
-| [docs/02-module-transcription.md](docs/02-module-transcription.md) | 模块② spec:WhisperKit 转写 / 归档 / 导出 |
-| [docs/03-module-activity-log.md](docs/03-module-activity-log.md) | 模块③ spec:活动捕获 / 每日日志 / Obsidian 写回 |
+## What Mneme Stores Locally
 
-## 当前状态
+Mneme stores runtime data in the user's Application Support folder:
 
-**v0.1.0 本地可运行实现阶段**。仓库现在包含 SwiftPM package、`MnemeCore`、SwiftUI 菜单栏 app、测试套件和本地 `.app` 打包脚本。
+- Search index database.
+- Transcript JSON files.
+- Local model cache.
+- Source folder settings and bookmarks.
+- Generated activity-note content when the user enables Activity Log write-back.
 
-已实现:
-- 菜单栏 app、主窗口、快搜悬浮窗和可配置全局热键。
-- Notes / PDF / Code / Transcript / Activity 连接器。
-- GRDB-backed 本地索引、增量 indexing、语义搜索、MLX 本地 RAG streaming 生成和带引用的 extractive fallback。
-- Search/QuickSearch 结果可打开原文;笔记命中优先走 Obsidian URI,失败再回退系统打开。
-- CoreML multilingual-e5:已转换本地 `.mlpackage` 和 tokenizer 资产,打包进 `.build/Mneme.app`;资源缺失时回退到 NLEmbedding/Hashing。
-- Activity Log: 手动刷新、运行期 FSEvents 监听、git 活动收集、可选 MLX 每日摘要、Obsidian daily note 受管段落写回。
-- Transcripts: WhisperKit 音频转写、导入已有文本、语音备忘文件夹监听、JSON 持久化、索引、Obsidian 导出、时间戳段落播放。
-- Sources: 文件夹选择保存 security-scoped bookmark;可启动来源 FSEvents 监听,变化后去抖自动重建索引。
-- Settings: 可配置快搜热键和登录时启动。
-- 本地打包: `scripts/build_app_bundle.sh` 生成 `.build/Mneme.app`,复制 e5 资产、SwiftPM 资源 bundle 和 MLX `mlx.metallib`。
+Mneme does not include cloud sync, hosted inference, analytics, or telemetry.
 
-当前主要限制:真实用户语料规模、长音频性能、混合语言录音质量、更多真实扫描 PDF OCR 样本和更大 MLX 模型选择仍需要继续验证。
+## Main Features
 
-常用命令:
+- Menu-bar app with a main window and quick-search panel.
+- Local indexing for notes, PDFs, source code, transcripts, and activity notes.
+- Local semantic search with CoreML multilingual embeddings.
+- Local RAG answers with citations using MLX, with a local fallback answer path.
+- Local WhisperKit transcription, transcript indexing, Obsidian export, and timestamp playback.
+- Activity Log for workspace changes and git activity, with optional local daily summaries.
+- Source-folder watching, configurable global shortcut, and launch-at-login support.
 
-```bash
-DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test
-DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift build
-DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer scripts/build_app_bundle.sh
-```
+## Current Release
 
-重新生成 e5 资产:
+v0.1.0 is the first public macOS release. It is suitable for local testing and early daily use, with the following practical limits:
 
-```bash
-uv run --with transformers --with torch --with coremltools \
-  scripts/convert_e5_to_coreml.py --output-dir .build/Models/e5
-DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer scripts/build_app_bundle.sh
-```
-
-e5 bundle 诊断:
-
-```bash
-MNEME_DIAGNOSTIC=1 .build/Mneme.app/Contents/MacOS/Mneme
-```
-
-WhisperKit 转写诊断:
-
-```bash
-MNEME_TRANSCRIBE_DIAGNOSTIC_AUDIO=/path/to/audio.wav \
-  MNEME_TRANSCRIBE_DIAGNOSTIC_MODEL=tiny \
-  MNEME_TRANSCRIBE_DIAGNOSTIC_LANGUAGE=en \
-  .build/Mneme.app/Contents/MacOS/Mneme
-```
-
-MLX RAG 诊断:
-
-```bash
-MNEME_MLX_DIAGNOSTIC=1 .build/Mneme.app/Contents/MacOS/Mneme
-```
-
-Activity MLX 摘要诊断:
-
-```bash
-MNEME_ACTIVITY_SUMMARY_DIAGNOSTIC=1 .build/Mneme.app/Contents/MacOS/Mneme
-```
-
-MLX 命令行/app bundle 需要 `mlx.metallib`;`scripts/build_app_bundle.sh` 会自动调用 `scripts/build_mlx_metallib.sh`。如果本机缺 Metal Toolchain,先运行:
-
-```bash
-DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -downloadComponent MetalToolchain
-```
-
-## 目标环境
-
-Apple Silicon(开发机 M5 Pro)· macOS 14+ · 内容中英混合。
+- Very large research corpora may need more validation.
+- Long recordings may require time and local disk space.
+- Mixed-language recordings and scanned PDFs should be checked on representative user files.
+- Optional local models may download on first use and depend on network availability during setup.
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+Mneme is open source under the [MIT License](LICENSE).
+
+---
+
+# Mneme 中文用户指南
+
+Mneme 是一款本地优先的 macOS 科研记忆应用。它帮助研究者在自己的 Mac 上搜索、提问、转写和回顾本地科研资料。
+
+使用 Mneme 不需要编程经验。下载安装应用后，选择要读取的资料文件夹，建立本地索引，然后使用快速搜索窗口或主窗口中的各个功能页。
+
+## 下载
+
+从 [Releases](https://github.com/mjyang04/Mneme/releases) 页面下载最新版安装包。
+
+使用 DMG 安装：
+
+1. 打开 `Mneme-v0.1.0-macos-arm64.dmg`。
+2. 将 `Mneme.app` 拖入 `Applications`。
+3. 从 `Applications` 打开 `Mneme.app`。
+
+如果 macOS 首次启动时拦截应用，请在 Finder 里右键点击 `Mneme.app`，选择 **Open/打开**，并确认系统提示。
+
+## 系统要求
+
+- Apple Silicon Mac，M1 或更新芯片即可。
+- macOS 14 或更新版本。
+- 需要足够的本地磁盘空间存放应用数据和本地模型。可选的转写模型和本地问答模型可能占用数百 MB 或更多空间。
+- 首次使用建议保持网络连接，Mneme 可以自动准备可选本地模型。模型准备完成后，日常索引和搜索都在本机运行。
+
+## 首次使用
+
+1. 从 `Applications` 打开 Mneme。
+2. 在 Settings 中添加资料来源：
+   - Notes folders：Markdown 笔记。
+   - Paper folders：PDF 文件。
+   - Code folders：代码仓库。
+3. 点击 **Rebuild Index** 建立本地索引。
+4. 通过菜单栏或全局快捷键打开快速搜索。
+5. 在 Transcripts 页选择音频文件并开始转写。如果 WhisperKit 模型尚未安装，Mneme 可以自动下载。
+6. 如果需要活动日志，在 Activity 页选择 workspace folders 和 daily-note folder，让 Mneme 写入每日活动摘要。
+
+## Mneme 会在本机保存什么
+
+Mneme 的运行数据保存在用户的 Application Support 文件夹中：
+
+- 搜索索引数据库。
+- 转写文本 JSON 文件。
+- 本地模型缓存。
+- 资料来源设置和 folder bookmarks。
+- 用户启用 Activity Log 写回后生成的 daily-note 内容。
+
+Mneme 不包含云同步、云端推理、分析统计或遥测。
+
+## 主要功能
+
+- 菜单栏应用，包含主窗口和快速搜索面板。
+- 本地索引笔记、PDF、代码、转写文本和活动日志。
+- 使用 CoreML multilingual embeddings 的本地语义搜索。
+- 使用 MLX 的本地带引用问答，并保留本地 fallback 回答路径。
+- WhisperKit 本地音频转写、转写索引、Obsidian 导出和时间戳播放。
+- Activity Log 支持 workspace 文件变化和 git 活动，可选本地每日摘要。
+- 支持资料文件夹监听、全局快捷键配置和登录时启动。
+
+## 当前版本
+
+v0.1.0 是第一个公开 macOS 版本，适合本地测试和早期日常使用。当前仍有以下实际限制：
+
+- 超大规模科研资料库仍需要更多验证。
+- 长录音可能需要较长处理时间和本地磁盘空间。
+- 混合语言录音和扫描 PDF 建议用用户自己的代表性文件检查效果。
+- 可选本地模型可能在首次使用时下载，并依赖首次配置时的网络状态。
+
+## 开源协议
+
+Mneme 使用 [MIT License](LICENSE) 开源。

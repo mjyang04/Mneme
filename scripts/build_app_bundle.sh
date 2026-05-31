@@ -2,6 +2,8 @@
 set -euo pipefail
 
 APP_NAME="Mneme"
+APP_PRODUCT="MnemeApp"
+CLI_PRODUCT="mneme"
 BUNDLE_ID="local.mneme.app"
 CONFIGURATION="${CONFIGURATION:-release}"
 
@@ -11,22 +13,21 @@ BIN_PATH="$(cd "$REPO_ROOT" && swift build -c "$CONFIGURATION" --show-bin-path)"
 APP_DIR="${1:-"$REPO_ROOT/.build/$APP_NAME.app"}"
 CONTENTS_DIR="$APP_DIR/Contents"
 MACOS_DIR="$CONTENTS_DIR/MacOS"
+HELPERS_DIR="$CONTENTS_DIR/Helpers"
 RESOURCES_DIR="$CONTENTS_DIR/Resources"
-ICON_SOURCE="$REPO_ROOT/Assets/AppIcon/Mneme.icns"
 
 cd "$REPO_ROOT"
-swift build -c "$CONFIGURATION" --product "$APP_NAME"
+swift build -c "$CONFIGURATION" --product "$APP_PRODUCT"
+swift build -c "$CONFIGURATION" --product "$CLI_PRODUCT"
 
 rm -rf "$APP_DIR"
-mkdir -p "$MACOS_DIR" "$RESOURCES_DIR"
-cp "$BIN_PATH/$APP_NAME" "$MACOS_DIR/$APP_NAME"
+mkdir -p "$MACOS_DIR" "$HELPERS_DIR" "$RESOURCES_DIR"
+cp "$BIN_PATH/$APP_PRODUCT" "$MACOS_DIR/$APP_NAME"
+cp "$BIN_PATH/$CLI_PRODUCT" "$HELPERS_DIR/mneme"
 chmod 755 "$MACOS_DIR/$APP_NAME"
+chmod 755 "$HELPERS_DIR/mneme"
 
 find "$BIN_PATH" -maxdepth 1 -name "*.bundle" -type d -exec cp -R {} "$RESOURCES_DIR" \;
-
-if [ -f "$ICON_SOURCE" ]; then
-    cp "$ICON_SOURCE" "$RESOURCES_DIR/Mneme.icns"
-fi
 
 if [ -d "$REPO_ROOT/.build/checkouts/mlx-swift/Source/Cmlx/mlx-generated/metal" ]; then
     "$SCRIPT_DIR/build_mlx_metallib.sh" "$MACOS_DIR/mlx.metallib" >/dev/null
@@ -53,8 +54,6 @@ cat > "$CONTENTS_DIR/Info.plist" <<PLIST
     <string>6.0</string>
     <key>CFBundleName</key>
     <string>$APP_NAME</string>
-    <key>CFBundleIconFile</key>
-    <string>Mneme</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
@@ -77,6 +76,7 @@ if command -v codesign >/dev/null 2>&1; then
     if [ -f "$MACOS_DIR/mlx.metallib" ]; then
         codesign --force --sign - "$MACOS_DIR/mlx.metallib" >/dev/null
     fi
+    codesign --force --sign - "$HELPERS_DIR/mneme" >/dev/null
     codesign --force --sign - "$APP_DIR" >/dev/null
 fi
 

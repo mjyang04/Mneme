@@ -9,6 +9,8 @@ DerivedData/
 *.xcodeproj/project.xcworkspace/xcuserdata/
 *.xcodeproj/xcuserdata/
 .swiftpm/
+
+# Node / Electron
 node_modules/
 dist/
 
@@ -29,6 +31,3 @@ Models/
 /CLAUDE.md
 /task_plan.md
 /notes.md
-/docs/plans/
-/Tests/
-/Assets/AppIcon/*.iconset/

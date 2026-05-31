@@ -9,6 +9,7 @@ struct SettingsView: View {
     @State private var sourceWatchStatus = ""
     @State private var launchAtLogin = LoginItemController.isEnabled
     @State private var loginItemStatus = ""
+    @AppStorage(ModelDownloadSettings.mlxDownloadKey) private var allowsMLXModelDownload = false
     private let hotKeyPreferences = HotKeyPreferences()
 
     var body: some View {
@@ -42,6 +43,11 @@ struct SettingsView: View {
                     Button("添加笔记夹") { addFolder(.notes) }
                     Button("添加论文夹") { addFolder(.pdf) }
                     Button("添加代码仓") { addFolder(.code) }
+                }
+                HStack {
+                    Button("添加 Agent 日志夹") { addFolder(.agentSession) }
+                    Button("添加网页剪藏夹") { addFolder(.web) }
+                    Button("添加 Zotero 库") { addFolder(.zotero) }
                 }
             }
 
@@ -127,9 +133,20 @@ struct SettingsView: View {
             }
 
             Section("模型与本地数据") {
-                Text("Mneme 会把索引、转写稿和模型缓存保存在本机。首次使用转写或本地问答时，如果所需模型尚未准备好，Mneme 会尝试下载到本机模型目录；下载完成后，日常索引、搜索和已缓存模型推理都在本机运行。")
+                Toggle("允许首次下载 MLX 问答/摘要模型", isOn: Binding(
+                    get: { allowsMLXModelDownload },
+                    set: { enabled in
+                        allowsMLXModelDownload = enabled
+                        env.setAllowsMLXModelDownload(enabled)
+                    }
+                ))
+                Text("Mneme 会把索引、转写稿和模型缓存保存在本机。未开启下载许可时，本地问答和活动摘要只会加载已存在的 MLX 模型；缺模型会回退到本地摘录。")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                Text("MLX 模型目录: \(env.mlxModelDirectory().path)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
             }
         }
         .formStyle(.grouped)

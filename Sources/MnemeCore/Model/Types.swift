@@ -6,8 +6,36 @@ public enum SourceKind: String, Codable, Sendable, CaseIterable, Identifiable {
     case code
     case transcript
     case activity
+    case memory
+    case agentSession = "agent_session"
+    case zotero
+    case web
 
     public var id: String { rawValue }
+
+    public static func parse(_ rawValue: String) -> SourceKind? {
+        if rawValue == "agentSession" {
+            return .agentSession
+        }
+        return SourceKind(rawValue: rawValue)
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let rawValue = try container.decode(String.self)
+        guard let kind = SourceKind.parse(rawValue) else {
+            throw DecodingError.dataCorruptedError(
+                in: container,
+                debugDescription: "Unknown source kind: \(rawValue)"
+            )
+        }
+        self = kind
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(rawValue)
+    }
 }
 
 public struct SourceItem: Sendable, Equatable {
@@ -97,6 +125,7 @@ public struct SearchHit: Sendable, Equatable {
     public let uri: URL
     public let kind: SourceKind
     public let locator: TextLocator?
+    public let meta: [String: String]
 
     public init(
         chunkId: String,
@@ -106,7 +135,8 @@ public struct SearchHit: Sendable, Equatable {
         title: String?,
         uri: URL,
         kind: SourceKind,
-        locator: TextLocator?
+        locator: TextLocator?,
+        meta: [String: String] = [:]
     ) {
         self.chunkId = chunkId
         self.documentId = documentId
@@ -116,5 +146,6 @@ public struct SearchHit: Sendable, Equatable {
         self.uri = uri
         self.kind = kind
         self.locator = locator
+        self.meta = meta
     }
 }

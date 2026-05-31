@@ -4,6 +4,10 @@ import MnemeCore
 
 enum ResultOpener {
     static func open(_ hit: SearchHit) {
+        if let sourceURL = hit.meta["source_url"].flatMap(URL.init(string:)) {
+            NSWorkspace.shared.open(sourceURL)
+            return
+        }
         if hit.kind == .notes, hit.uri.isFileURL, openInObsidian(hit.uri) {
             return
         }

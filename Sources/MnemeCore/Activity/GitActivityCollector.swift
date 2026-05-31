@@ -18,17 +18,22 @@ public struct GitActivityCollector: Sendable {
             "--numstat"
         ]
 
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = Pipe()
+        let outputPipe = Pipe()
+        let errorPipe = Pipe()
+        process.standardOutput = outputPipe
+        process.standardError = errorPipe
 
         try process.run()
+        let outputReader = PipeReader(handle: outputPipe.fileHandleForReading)
+        let errorReader = PipeReader(handle: errorPipe.fileHandleForReading)
         process.waitUntilExit()
+        let data = outputReader.wait()
+        _ = errorReader.wait()
+
         guard process.terminationStatus == 0 else {
             return []
         }
 
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
         let output = String(data: data, encoding: .utf8) ?? ""
         return Self.parseLog(output)
     }
@@ -71,4 +76,29 @@ public struct GitActivityCollector: Sendable {
         formatter.formatOptions = [.withInternetDateTime]
         return formatter
     }()
+}
+
+private final class PipeReader: @unchecked Sendable {
+    private let group = DispatchGroup()
+    private let lock = NSLock()
+    private var data = Data()
+
+    init(handle: FileHandle) {
+        group.enter()
+        DispatchQueue.global(qos: .utility).async {
+            let output = handle.readDataToEndOfFile()
+            self.lock.lock()
+            self.data = output
+            self.lock.unlock()
+            self.group.leave()
+        }
+    }
+
+    func wait() -> Data {
+        group.wait()
+        lock.lock()
+        let output = data
+        lock.unlock()
+        return output
+    }
 }

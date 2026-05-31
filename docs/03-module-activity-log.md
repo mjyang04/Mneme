@@ -4,15 +4,14 @@
 - 依赖:模块①(日志经 `ActivityConnector` 汇入索引)
 - 对应建造期:P3(纯 Swift,最轻)
 
-macOS 后台捕获你当天动过的文件 + git 提交,每天自动生成一条结构化 markdown 写进 Obsidian,省去手动记 research log。Windows Desktop 当前做手动 activity scan,先展示 recent files 和 git commits。
+后台捕获你当天动过的文件 + git 提交,每天自动生成一条结构化 markdown 写进 Obsidian,省去手动记 research log。
 
 ---
 
 ## 1. 范围
 
 **包含**
-- macOS:FSEvents 监听用户授权的「工作文件夹」,记录被创建/修改的文件。
-- Windows Desktop:手动扫描来源文件夹,按 mtime 展示 recent files。
+- FSEvents 监听用户授权的「工作文件夹」,记录被创建/修改的文件。
 - 轮询授权的 git 仓库,收集当天提交。
 - 按天聚合 → 生成 `Daily/YYYY-MM-DD.md`(受管段落,安全追加)。
 - 可选:用 MLX 本地 LLM 把流水账总结成人话。
@@ -31,8 +30,6 @@ macOS 后台捕获你当天动过的文件 + git 提交,每天自动生成一条
 |---|---|---|
 | 文件改动 | FSEvents | 仅授权文件夹;记录路径、时间、事件类型 |
 | git 提交 | `git log --since=<today>` | 授权仓库;记录 hash、message、改动文件数 |
-
-Windows Desktop 中,文件改动信号来自手动 scan 而不是系统 watcher;git 提交仍通过本地 `git log` 获取。
 
 > 明确**不**监听全盘、不记录文件内容、不追踪 app。只看你主动授权的工作目录。
 
@@ -97,7 +94,6 @@ struct ProjectActivity {
 
 - 活动页:月历视图(有活动的日期高亮)+ 选中日的详情(按项目分组的文件/提交列表)。
 - 操作:手动「刷新今天」、打开对应 Daily 笔记、调整监听文件夹与忽略规则。
-- Windows Desktop:Activity tab 显示每个来源的 recent files 和最近 git commits,用于验证与 macOS Activity 信息结构一致。
 
 ---
 
@@ -127,7 +123,6 @@ struct ProjectActivity {
 - [ ] 忽略规则生效(`node_modules` 等不出现在摘要里)。
 - [ ] 活动日志能在全局搜索里被检索到。
 - [ ]（开启时)LLM 总结贴合当天实际改动,不杜撰。
-- [ ] Windows Desktop Activity tab 能读取已添加来源,展示 recent files 和 git commits。
 
 ---
 

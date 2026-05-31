@@ -1,11 +1,4 @@
 import Foundation
-import PDFKit
-#if canImport(Vision)
-import Vision
-#endif
-#if canImport(AppKit)
-import AppKit
-#endif
 
 public struct PDFConnector: SourceConnector {
     public let sourceId: String
@@ -36,55 +29,13 @@ public struct PDFConnector: SourceConnector {
     }
 
     public func extract(_ item: SourceItem) throws -> ExtractedDocument {
-        guard let document = PDFDocument(url: item.uri) else {
-            throw CocoaError(.fileReadCorruptFile)
-        }
-
-        var pages: [String] = []
-        for pageIndex in 0..<document.pageCount {
-            guard let page = document.page(at: pageIndex) else { continue }
-            let text = page.string ?? ""
-            if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                pages.append(ocr(page: page))
-            } else {
-                pages.append(text)
-            }
-        }
-
-        let body = pages.joined(separator: "\n\n")
-        let title = (document.documentAttributes?[PDFDocumentAttribute.titleAttribute] as? String)
-            .flatMap { $0.isEmpty ? nil : $0 }
-            ?? item.uri.deletingPathExtension().lastPathComponent
-
+        let extraction = try PDFTextExtractor.extract(url: item.uri)
         return ExtractedDocument(
             id: item.id,
-            title: title,
-            text: body,
-            contentHash: ContentHash.of(body),
-            meta: ["pages": String(document.pageCount)]
+            title: extraction.title ?? item.uri.deletingPathExtension().lastPathComponent,
+            text: extraction.text,
+            contentHash: ContentHash.of(extraction.text),
+            meta: ["pages": String(extraction.pageCount)]
         )
-    }
-
-    private func ocr(page: PDFPage) -> String {
-        #if canImport(Vision) && canImport(AppKit)
-        let bounds = page.bounds(for: .mediaBox)
-        let image = page.thumbnail(
-            of: CGSize(width: bounds.width * 2, height: bounds.height * 2),
-            for: .mediaBox
-        )
-        guard let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
-            return ""
-        }
-
-        let request = VNRecognizeTextRequest()
-        request.recognitionLevel = .accurate
-        request.recognitionLanguages = ["zh-Hans", "en-US"]
-        try? VNImageRequestHandler(cgImage: cgImage, options: [:]).perform([request])
-        return (request.results ?? [])
-            .compactMap { $0.topCandidates(1).first?.string }
-            .joined(separator: "\n")
-        #else
-        return ""
-        #endif
     }
 }

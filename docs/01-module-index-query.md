@@ -4,7 +4,7 @@
 - 依赖:无(其余模块依赖本模块)
 - 对应建造期:P1(搜索)+ P2(RAG)
 
-把笔记 / 论文 PDF / 代码统一建索引,提供搜索;macOS 正式路径使用 CoreML embedding + MLX RAG,Windows Desktop 当前使用本地 lexical search + extractive Ask 引用回答。
+把笔记 / 论文 PDF / 代码统一建索引,提供语义搜索;phase2 加本地 LLM 做带引用的 RAG 问答。
 
 ---
 
@@ -13,11 +13,11 @@
 **包含**
 - 三个内容连接器:`NotesConnector`、`PDFConnector`、`CodeConnector`
 - 分块 `Chunker`
-- `EmbeddingService`(macOS CoreML;Windows Desktop 暂用 lexical index)
+- `EmbeddingService`(CoreML)
 - `IndexStore`(向量增删查)
 - `IndexingPipeline`(增量索引编排)
 - `QueryService`(语义检索;P2 加 RAG)
-- QuickSearch / command search UX:macOS 为 NSPanel 悬浮窗,Windows Desktop 为 Electron window + 顶部 command input + `Ctrl+Space`
+- QuickSearch 悬浮窗 UX
 
 **不包含**
 - 语音转写(模块②)、活动捕获(模块③)——它们各自实现 `SourceConnector`,复用本模块的 Chunker/Embedding/Index/Query。
@@ -103,12 +103,6 @@ enum EmbedKind { case query, passage }               // e5 前缀约定
 - e5 约定:passage 加 `passage: ` 前缀,query 加 `query: ` 前缀(显著影响检索质量)。
 - 批处理 + 限流;输出 L2 归一化向量(便于用内积≈余弦)。
 - 降级:模型不可用时退 `NLEmbedding.sentenceEmbedding(for:)`(维度不同 → 触发整库重嵌或独立降级索引;本版选择「告警 + 暂停索引」,不混维)。
-
-### Windows Desktop 检索边界
-- Windows Desktop 不加载 CoreML 或 MLX;`Windows/mneme-windows.mjs` 用 Node.js 标准库维护本地 JSON index。
-- 当前支持 notes/code/text/transcript text 的正文 indexing,PDF 先做 metadata indexing。
-- Search 使用本地 lexical scoring;Ask 从命中片段抽取句子并生成 `[n]` citation。
-- 该路径用于落地 Windows 桌面壳和本地数据合约,但不是最终 Windows embedding/RAG runtime。
 
 ---
 
@@ -198,12 +192,6 @@ struct RagAnswer {
 - 结果项:来源类型 icon · 标题 · 命中片段(query 词高亮)· 来源路径。
 - `Esc` 收起;失焦自动隐藏;响应要快(输入防抖 ~150ms)。
 
-Windows Desktop 对齐目标:
-- 顶部 command input 承担 QuickSearch 入口,支持 `Ctrl+K` focus。
-- Electron shell 注册 `Ctrl+Space` 作为系统级快速入口。
-- Search / Ask 使用同一 segmented control 和结果/引用展示结构。
-- Tray/window shell 已落地;后续补可配置 global hotkey。
-
 ---
 
 ## 10. 验收标准
@@ -215,8 +203,6 @@ Windows Desktop 对齐目标:
 - [ ] 点击结果能跳回原文(md→Obsidian,pdf/code→打开文件)。
 - [ ] `eval` 集 Hit@5 ≥ 0.9、MRR ≥ 0.85(fixture 语料)。
 - [ ]（P2)RAG 答案带可点击引用,引用确实来自检索片段。
-- [ ] Windows Desktop smoke test 能在 `windows-latest` 上添加来源、重建 index、Search、Ask、import transcript text,并加载 HTML/CSS/JS。
-- [ ] Windows Desktop packaging job 能产出 `.exe` installer/portable artifact。
 
 ---
 

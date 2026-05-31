@@ -37,10 +37,44 @@ final class QueryServiceTests: XCTestCase {
         XCTAssertEqual(hits[0].uri.lastPathComponent, "ml.md")
     }
 
+    func test_hybridSearchFindsExactTermsThatVectorModeCanMiss() async throws {
+        let embedder = HashingEmbeddingService(dimension: 1)
+        let store = try IndexStore(path: nil, embedderId: embedder.id, dimension: embedder.dimension)
+        try await store.upsert(
+            documentId: "code",
+            sourceId: "s1",
+            kind: .code,
+            uri: URL(fileURLWithPath: "/tmp/code.swift"),
+            title: "code",
+            contentHash: "h1",
+            chunks: [Chunk(ordinal: 0, text: "The API symbol is MnemeQueryFacade.", locator: TextLocator())],
+            vectors: [[1]]
+        )
+        try await store.upsert(
+            documentId: "notes",
+            sourceId: "s1",
+            kind: .notes,
+            uri: URL(fileURLWithPath: "/tmp/notes.md"),
+            title: "notes",
+            contentHash: "h2",
+            chunks: [Chunk(ordinal: 0, text: "General local memory notes.", locator: TextLocator())],
+            vectors: [[1]]
+        )
+
+        let query = QueryService(embedder: embedder, store: store)
+        let hybrid = try await query.search("MnemeQueryFacade", topK: 1, mode: .hybrid)
+        XCTAssertEqual(hybrid.first?.documentId, "code")
+    }
+
     func test_emptyQuery_returnsEmpty() async throws {
         let query = try await makeIndexed()
         let hits = try await query.search("   ")
         XCTAssertTrue(hits.isEmpty)
+    }
+
+    func test_punctuationOnlyQuerySkipsLexicalSearchAndStillReturnsSafely() async throws {
+        let query = try await makeIndexed()
+        _ = try await query.search("!!! ...", topK: 5, mode: .hybrid)
     }
 
     func test_collapseByDocument_keepsBestPerDoc() {

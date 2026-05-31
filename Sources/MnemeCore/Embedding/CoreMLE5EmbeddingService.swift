@@ -1,16 +1,15 @@
 @preconcurrency import CoreML
 import Foundation
-import MnemeCore
 import Tokenizers
 
-struct CoreMLE5EmbeddingService: EmbeddingService, @unchecked Sendable {
-    let id = "coreml-e5-small-v1"
-    let dimension = 384
+public struct CoreMLE5EmbeddingService: EmbeddingService, @unchecked Sendable {
+    public let id = "coreml-e5-small-v1"
+    public let dimension = 384
 
     private let model: MLModel
     private let tokenizer: any Tokenizer
 
-    static func make(resources: CoreMLE5Resources) async throws -> CoreMLE5EmbeddingService {
+    public static func make(resources: CoreMLE5Resources) async throws -> CoreMLE5EmbeddingService {
         let configuration = MLModelConfiguration()
         configuration.computeUnits = .all
         let compiledURL = try await MLModel.compileModel(at: resources.modelURL)
@@ -19,12 +18,17 @@ struct CoreMLE5EmbeddingService: EmbeddingService, @unchecked Sendable {
         return CoreMLE5EmbeddingService(model: model, tokenizer: tokenizer)
     }
 
-    func embed(_ texts: [String], kind: EmbedKind) async throws -> [[Float]] {
+    public func embed(_ texts: [String], kind: EmbedKind) async throws -> [[Float]] {
         try texts.map { text in
             let prepared = E5Input.preprocessedText(text, kind: kind)
             let input = E5Input(tokenIds: tokenizer.encode(text: prepared))
             return try embed(input)
         }
+    }
+
+    private init(model: MLModel, tokenizer: any Tokenizer) {
+        self.model = model
+        self.tokenizer = tokenizer
     }
 
     private func embed(_ input: E5Input) throws -> [Float] {
@@ -77,8 +81,8 @@ struct CoreMLE5EmbeddingService: EmbeddingService, @unchecked Sendable {
     }
 }
 
-enum CoreMLE5Loader {
-    static func loadEmbedder(appSupportDirectory: URL) -> (embedder: (any EmbeddingService)?, resourcesURL: URL?) {
+public enum CoreMLE5Loader {
+    public static func loadEmbedder(appSupportDirectory: URL) -> (embedder: (any EmbeddingService)?, resourcesURL: URL?) {
         let candidateRoots = [
             appSupportDirectory.appendingPathComponent("Models/e5", isDirectory: true),
             Bundle.main.resourceURL?.appendingPathComponent("Models/e5", isDirectory: true)

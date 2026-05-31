@@ -55,9 +55,14 @@ struct MnemeApp: App {
         if ProcessInfo.processInfo.environment["MNEME_MLX_DIAGNOSTIC"] == "1" {
             let appSupportDirectory = AppEnvironment.appSupportDir()
             let modelDirectory = appSupportDirectory.appendingPathComponent("Models/MLX", isDirectory: true)
+            let allowsDownload = ProcessInfo.processInfo.environment["MNEME_MLX_DIAGNOSTIC_DOWNLOAD"] == "1"
             print("mlx.models.dir=\(modelDirectory.path)")
             fflush(stdout)
-            let generator = MLXLocalRagAnswerGenerator(modelDirectory: modelDirectory, maxTokens: 96)
+            let textGenerator = MLXLocalTextGenerator(
+                modelDirectory: modelDirectory,
+                allowsModelDownload: allowsDownload
+            )
+            let generator = MLXLocalRagAnswerGenerator(textGenerator: textGenerator, maxTokens: 96)
             let question = ProcessInfo.processInfo.environment["MNEME_MLX_DIAGNOSTIC_QUESTION"]
                 ?? "Where does Mneme keep research data?"
             let hit = SearchHit(
@@ -93,10 +98,16 @@ struct MnemeApp: App {
         if ProcessInfo.processInfo.environment["MNEME_ACTIVITY_SUMMARY_DIAGNOSTIC"] == "1" {
             let appSupportDirectory = AppEnvironment.appSupportDir()
             let modelDirectory = appSupportDirectory.appendingPathComponent("Models/MLX", isDirectory: true)
+            let allowsDownload = ProcessInfo.processInfo.environment["MNEME_MLX_DIAGNOSTIC_DOWNLOAD"] == "1"
+                || ProcessInfo.processInfo.environment["MNEME_ACTIVITY_SUMMARY_DIAGNOSTIC_DOWNLOAD"] == "1"
             print("activity.summary.models.dir=\(modelDirectory.path)")
             fflush(stdout)
+            let textGenerator = MLXLocalTextGenerator(
+                modelDirectory: modelDirectory,
+                allowsModelDownload: allowsDownload
+            )
             let generator = ResilientActivitySummaryGenerator(
-                primary: MLXLocalActivitySummaryGenerator(modelDirectory: modelDirectory, maxTokens: 96)
+                primary: MLXLocalActivitySummaryGenerator(textGenerator: textGenerator, maxTokens: 96)
             )
             let activity = DailyActivity(day: "2026-05-29", projects: [
                 ProjectActivity(

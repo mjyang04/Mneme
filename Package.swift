@@ -6,7 +6,8 @@ let package = Package(
     platforms: [.macOS(.v14)],
     products: [
         .library(name: "MnemeCore", targets: ["MnemeCore"]),
-        .executable(name: "Mneme", targets: ["Mneme"])
+        .executable(name: "MnemeApp", targets: ["Mneme"]),
+        .executable(name: "mneme", targets: ["MnemeCLI"])
     ],
     dependencies: [
         .package(url: "https://github.com/argmaxinc/argmax-oss-swift.git", from: "1.0.0"),
@@ -18,7 +19,10 @@ let package = Package(
     targets: [
         .target(
             name: "MnemeCore",
-            dependencies: [.product(name: "GRDB", package: "GRDB.swift")]
+            dependencies: [
+                .product(name: "GRDB", package: "GRDB.swift"),
+                .product(name: "Tokenizers", package: "swift-transformers")
+            ]
         ),
         .executableTarget(
             name: "Mneme",
@@ -32,6 +36,11 @@ let package = Package(
                 .product(name: "Tokenizers", package: "swift-transformers")
             ],
             path: "App"
+        ),
+        .executableTarget(
+            name: "MnemeCLI",
+            dependencies: ["MnemeCore"],
+            path: "CLI"
         ),
         .testTarget(
             name: "MnemeCoreTests",

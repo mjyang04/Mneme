@@ -75,6 +75,40 @@ final class DailyNoteWriterTests: XCTestCase {
         XCTAssertTrue(current.contains("second block"))
     }
 
+    func test_writerDoesNotOverwriteWhenExistingNoteCannotBeReadAsUTF8() throws {
+        let writer = DailyNoteWriter(dailyDirectory: dailyDirectory)
+        let path = dailyDirectory.appendingPathComponent("2026-05-29.md")
+        let original = Data([0xff, 0xfe, 0xfd])
+        try original.write(to: path)
+
+        XCTAssertThrowsError(try writer.writeManagedBlock("safe block", day: "2026-05-29"))
+        XCTAssertEqual(try Data(contentsOf: path), original)
+    }
+
+    func test_writerAppendsWhenManagedMarkersAreMalformedWithoutDeletingUserText() throws {
+        let writer = DailyNoteWriter(dailyDirectory: dailyDirectory)
+        let path = dailyDirectory.appendingPathComponent("2026-05-29.md")
+        let malformed = """
+        # 2026-05-29
+
+        \(DailyActivityRenderer.startMarker)
+        stale generated text
+        用户手写内容
+        \(DailyActivityRenderer.startMarker)
+        broken duplicate marker
+        \(DailyActivityRenderer.endMarker)
+        用户手写尾部
+        """
+        try malformed.write(to: path, atomically: true, encoding: .utf8)
+
+        try writer.writeManagedBlock("safe block", day: "2026-05-29")
+        let current = try String(contentsOf: path, encoding: .utf8)
+
+        XCTAssertTrue(current.contains("用户手写内容"))
+        XCTAssertTrue(current.contains("用户手写尾部"))
+        XCTAssertTrue(current.contains("safe block"))
+    }
+
     private func sampleActivity() -> DailyActivity {
         DailyActivity(day: "2026-05-29", projects: [
             ProjectActivity(

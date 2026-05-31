@@ -11,10 +11,12 @@ final class AppEnvironment: ObservableObject {
     let transcriptStore: TranscriptStore
     let transcriptionService: any TranscriptionService
     let activitySummaryGenerator: any ActivitySummaryGenerator
+    private let mlxTextGenerator: MLXLocalTextGenerator
 
     @Published var isIndexing = false
     @Published var lastStats: IndexRunStats?
     @Published var statusMessage = ""
+    private var reindexNeedsRerun = false
 
     private init(
         embedder: any EmbeddingService,
@@ -22,6 +24,7 @@ final class AppEnvironment: ObservableObject {
         transcriptStore: TranscriptStore,
         transcriptionService: any TranscriptionService,
         activitySummaryGenerator: any ActivitySummaryGenerator,
+        mlxTextGenerator: MLXLocalTextGenerator,
         ragAnswerGenerator: any RagAnswerGenerator
     ) {
         self.embedder = embedder
@@ -29,15 +32,14 @@ final class AppEnvironment: ObservableObject {
         self.transcriptStore = transcriptStore
         self.transcriptionService = transcriptionService
         self.activitySummaryGenerator = activitySummaryGenerator
+        self.mlxTextGenerator = mlxTextGenerator
         self.query = QueryService(embedder: embedder, store: store, ragAnswerGenerator: ragAnswerGenerator)
     }
 
     static func make() -> AppEnvironment {
         let directory = appSupportDir()
-        let coreML = CoreMLE5Loader.loadEmbedder(appSupportDirectory: directory)
-        let embedder: any EmbeddingService = coreML.embedder
-            ?? (try? NLEmbeddingService())
-            ?? HashingEmbeddingService(dimension: 256)
+        let embedding = QueryServiceFactory.makeBestAvailableEmbedder(appSupportDirectory: directory)
+        let embedder = embedding.embedder
         let databasePath = directory.appendingPathComponent("index.sqlite").path
         let transcriptStore = TranscriptStore(
             directory: directory.appendingPathComponent("Transcripts", isDirectory: true)
@@ -47,7 +49,8 @@ final class AppEnvironment: ObservableObject {
         )
         let store = openStore(path: databasePath, embedder: embedder)
         let mlxTextGenerator = MLXLocalTextGenerator(
-            modelDirectory: directory.appendingPathComponent("Models/MLX", isDirectory: true)
+            modelDirectory: directory.appendingPathComponent("Models/MLX", isDirectory: true),
+            allowsModelDownload: ModelDownloadSettings.allowsMLXModelDownload
         )
         let ragAnswerGenerator = ResilientRagAnswerGenerator(
             primary: MLXLocalRagAnswerGenerator(textGenerator: mlxTextGenerator)
@@ -61,9 +64,10 @@ final class AppEnvironment: ObservableObject {
             transcriptStore: transcriptStore,
             transcriptionService: transcriptionService,
             activitySummaryGenerator: activitySummaryGenerator,
+            mlxTextGenerator: mlxTextGenerator,
             ragAnswerGenerator: ragAnswerGenerator
         )
-        if let resourcesURL = coreML.resourcesURL {
+        if let resourcesURL = embedding.e5ResourcesURL {
             environment.statusMessage = "CoreML e5 已加载: \(resourcesURL.path)"
         } else if embedder.id.hasPrefix("nl-sentence") {
             environment.statusMessage = "CoreML e5 资源未安装，使用 NLEmbedding"
@@ -114,27 +118,37 @@ final class AppEnvironment: ObservableObject {
     }
 
     func reindex() async {
-        guard !isIndexing else { return }
+        guard !isIndexing else {
+            reindexNeedsRerun = true
+            statusMessage = "索引中，已排队再次重建"
+            return
+        }
         isIndexing = true
-        statusMessage = "索引中..."
         defer { isIndexing = false }
 
-        do {
-            let pipeline = IndexingPipeline(
-                connectors: sources.connectors(),
-                embedder: embedder,
-                store: store
-            )
-            let stats = try await pipeline.run { [weak self] message in
-                Task { @MainActor in
-                    self?.statusMessage = message
+        repeat {
+            reindexNeedsRerun = false
+            statusMessage = "索引中..."
+
+            do {
+                var connectors = sources.connectors()
+                connectors.append(MemoryConnector(root: memoryDirectory()))
+                let pipeline = IndexingPipeline(
+                    connectors: connectors,
+                    embedder: embedder,
+                    store: store
+                )
+                let stats = try await pipeline.run { [weak self] message in
+                    Task { @MainActor in
+                        self?.statusMessage = message
+                    }
                 }
+                lastStats = stats
+                statusMessage = "完成: 新增 \(stats.indexed), 跳过 \(stats.skipped), 删除 \(stats.deleted), 失败 \(stats.failed)"
+            } catch {
+                statusMessage = "索引出错: \(error.localizedDescription)"
             }
-            lastStats = stats
-            statusMessage = "完成: 新增 \(stats.indexed), 跳过 \(stats.skipped), 失败 \(stats.failed)"
-        } catch {
-            statusMessage = "索引出错: \(error.localizedDescription)"
-        }
+        } while reindexNeedsRerun
     }
 
     func startSourceWatching() {
@@ -155,5 +169,20 @@ final class AppEnvironment: ObservableObject {
 
     func whisperModelDirectory() -> URL {
         Self.appSupportDir().appendingPathComponent("Models/WhisperKit", isDirectory: true)
+    }
+
+    func mlxModelDirectory() -> URL {
+        Self.appSupportDir().appendingPathComponent("Models/MLX", isDirectory: true)
+    }
+
+    func memoryDirectory() -> URL {
+        Self.appSupportDir().appendingPathComponent("Memory", isDirectory: true)
+    }
+
+    func setAllowsMLXModelDownload(_ enabled: Bool) {
+        ModelDownloadSettings.allowsMLXModelDownload = enabled
+        Task {
+            await mlxTextGenerator.setAllowsModelDownload(enabled)
+        }
     }
 }

@@ -48,4 +48,64 @@ final class IndexingPipelineTests: XCTestCase {
         XCTAssertEqual(stats.skipped, 2)
         XCTAssertEqual(embeddedAfterSecond, embeddedAfterFirst)
     }
+
+    func test_runDeletesDocumentsMissingFromSource() async throws {
+        let (pipeline, store, _) = try makePipeline()
+        _ = try await pipeline.run()
+
+        try FileManager.default.removeItem(at: vault.appendingPathComponent("b.md"))
+        _ = try await pipeline.run()
+
+        let count = try await store.documentCount()
+        XCTAssertEqual(count, 1)
+    }
+
+    func test_runReindexesWhenMetadataChanges() async throws {
+        let embedder = HashingEmbeddingService(dimension: 64)
+        let store = try IndexStore(path: nil, embedderId: embedder.id, dimension: embedder.dimension)
+        let connector = MutableDocumentConnector(document: ExtractedDocument(
+            id: "doc",
+            title: "Doc",
+            text: "same text",
+            contentHash: "same-hash",
+            meta: ["source_url": "https://example.com/old"]
+        ))
+        let pipeline = IndexingPipeline(connectors: [connector], embedder: embedder, store: store)
+
+        _ = try await pipeline.run()
+        connector.document = ExtractedDocument(
+            id: "doc",
+            title: "Doc",
+            text: "same text",
+            contentHash: "same-hash",
+            meta: ["source_url": "https://example.com/new"]
+        )
+
+        let stats = try await pipeline.run()
+        let hits = try await store.search(
+            try await embedder.embed(["same text"], kind: .query)[0],
+            topK: 5
+        )
+
+        XCTAssertEqual(stats.indexed, 1)
+        XCTAssertEqual(hits.first?.meta["source_url"], "https://example.com/new")
+    }
+}
+
+private final class MutableDocumentConnector: SourceConnector, @unchecked Sendable {
+    let sourceId = "mutable"
+    let kind: SourceKind = .web
+    var document: ExtractedDocument
+
+    init(document: ExtractedDocument) {
+        self.document = document
+    }
+
+    func enumerate() throws -> [SourceItem] {
+        [SourceItem(id: document.id, uri: URL(fileURLWithPath: "/tmp/doc.html"), modifiedAt: nil)]
+    }
+
+    func extract(_ item: SourceItem) throws -> ExtractedDocument {
+        document
+    }
 }

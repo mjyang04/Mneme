@@ -18,7 +18,7 @@ struct ResultRow: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
-                Text(hit.uri.path)
+                Text(displayPath)
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
                     .lineLimit(1)
@@ -45,6 +45,18 @@ struct ResultRow: View {
             return "waveform"
         case .activity:
             return "calendar"
+        case .memory:
+            return "brain"
+        case .agentSession:
+            return "terminal"
+        case .zotero:
+            return "books.vertical"
+        case .web:
+            return "globe"
         }
+    }
+
+    private var displayPath: String {
+        hit.meta["source_url"] ?? (hit.uri.isFileURL ? hit.uri.path : hit.uri.absoluteString)
     }
 }

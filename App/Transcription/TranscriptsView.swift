@@ -18,7 +18,7 @@ struct TranscriptsView: View {
     @State private var audioURL: URL?
     @State private var audioTitle = ""
     @State private var audioModel = "large-v3-v20240930_626MB"
-    @State private var allowModelDownload = true
+    @State private var allowModelDownload = false
     @State private var isTranscribing = false
     @State private var player: AVPlayer?
 

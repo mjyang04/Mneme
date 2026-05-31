@@ -13,7 +13,7 @@ public struct TranscriptObsidianExporter: Sendable {
     @discardableResult
     public func export(_ document: TranscriptDocument) throws -> URL {
         try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
-        let url = outputDirectory.appendingPathComponent("\(dateSlug(document.createdAt))-\(slug(document.title)).md")
+        let url = outputDirectory.appendingPathComponent(filename(for: document))
         let block = renderManagedBlock(document)
         let existing = (try? String(contentsOf: url, encoding: .utf8)) ?? ""
         let updated = replaceManagedBlock(in: existing, with: block)
@@ -26,6 +26,7 @@ public struct TranscriptObsidianExporter: Sendable {
             Self.startMarker,
             "---",
             "type: transcript",
+            "transcript_id: \"\(document.id)\"",
             "source_audio: \"\(document.sourceAudioPath ?? "")\"",
             "duration: \(formatDuration(document.duration))",
             "language: \(document.language ?? "")",
@@ -39,6 +40,10 @@ public struct TranscriptObsidianExporter: Sendable {
         })
         lines.append(Self.endMarker)
         return lines.joined(separator: "\n")
+    }
+
+    private func filename(for document: TranscriptDocument) -> String {
+        "\(dateSlug(document.createdAt))-\(slug(document.title))-\(slug(document.id)).md"
     }
 
     private func replaceManagedBlock(in text: String, with block: String) -> String {

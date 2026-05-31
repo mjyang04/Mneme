@@ -40,9 +40,22 @@ final class TranscriptObsidianExporterTests: XCTestCase {
         XCTAssertEqual(markdown.components(separatedBy: TranscriptObsidianExporter.startMarker).count, 2)
     }
 
-    private func sampleTranscript() -> TranscriptDocument {
+    func test_exportUsesUniquePathForSameDaySameTitleTranscripts() throws {
+        let exporter = TranscriptObsidianExporter(outputDirectory: directory)
+        let first = sampleTranscript(id: "abc")
+        let second = sampleTranscript(id: "def")
+
+        let firstURL = try exporter.export(first)
+        let secondURL = try exporter.export(second)
+
+        XCTAssertNotEqual(firstURL, secondURL)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: firstURL.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: secondURL.path))
+    }
+
+    private func sampleTranscript(id: String = "abc") -> TranscriptDocument {
         TranscriptDocument(
-            id: "abc",
+            id: id,
             title: "Research Meeting",
             sourceAudioPath: "voice.m4a",
             duration: 12.5,
